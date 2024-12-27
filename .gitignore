@@ -6,4 +6,4 @@ dist/
 playground/
 examples/
 langchain/
-Dockerfile
+Dockerfile.DS_Store
