@@ -57,6 +57,15 @@
 </ul>
 </details>
 <details close>
+<summary>Rate Limiting & Error Handling</summary><br>
+<ul>
+<li>Automatic rate limit detection and handling</li>
+<li>Exponential backoff retry mechanism</li>
+<li>Configurable retry settings</li>
+<li>Improved error messages and debugging</li>
+</ul>
+</details>
+<details close>
 <summary>Message Automation</summary><br>
 <ul>
 <li>Create new chat thread</li>
@@ -167,6 +176,37 @@ poe -b P-B_HERE -lat P-LAT_HERE -f FORMKEY_HERE
 <img src="https://i.imgur.com/oAkTHfB.png" width="100%" height="auto">
 
 ## 🦄 Documentation
+### Rate Limiting
+This library includes automatic rate limit handling to prevent getting blocked by Poe's servers:
+
+```python
+# Configure rate limiting settings
+client = PoeApi(
+    tokens=tokens,
+    max_retries=3,  # Maximum number of retry attempts
+    retry_base_delay=1,  # Base delay between retries in seconds
+    retry_max_delay=60,  # Maximum delay between retries
+)
+
+# The client will automatically handle rate limits with exponential backoff
+for chunk in client.send_message("gpt-3.5-turbo", "Hello!"):
+    print(chunk["response"], end="", flush=True)
+```
+
+When rate limited:
+- The client automatically pauses and retries with exponential backoff
+- Provides detailed error messages about retry attempts
+- Fails gracefully after max retries reached
+
+You can also handle rate limits manually:
+```python
+try:
+    for chunk in client.send_message("gpt-3.5-turbo", "Hello!"):
+        print(chunk["response"], end="", flush=True)
+except RateLimitError as e:
+    print(f"Rate limited. Retry after: {e.retry_after} seconds")
+    time.sleep(e.retry_after)
+```
 ### Available Default Bots
 | Display Name            | Model                     | Token Limit | Words | Access Type                                                     |
 | ----------------------- | ------------------------- | ----------- | ----- | --------------------------------------------------------------- |
