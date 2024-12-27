@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "poe-api-wrapper"
-version = "1.6.4"
+version = "1.6.5"
 description = "A simple, lightweight and efficient API wrapper for Poe.com"
 readme = "README.md"
 requires-python = ">=3.7"
