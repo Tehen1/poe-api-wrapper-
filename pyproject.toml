@@ -1,0 +1,64 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "poe-api-wrapper"
+version = "1.6.4"
+description = "A simple, lightweight and efficient API wrapper for Poe.com"
+readme = "README.md"
+requires-python = ">=3.7"
+license = {text = "GNU General Public License v3 (GPLv3)"}
+keywords = ["python", "poe", "quora", "chatgpt", "claude", "poe-api", "api"]
+authors = [
+    {name = "snowby666"}
+]
+maintainers = [
+    {name = "snowby666"}
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: GNU General Public License (GPL)",
+    "Operating System :: OS Independent"
+]
+dependencies = [
+    "httpx[http2]",
+    "websocket-client",
+    "requests_toolbelt",
+    "loguru",
+    "rich==13.3.4",
+    "beautifulsoup4", 
+    "quickjs",
+    "nest-asyncio",
+    "orjson",
+    "aiofiles"
+]
+
+[project.optional-dependencies]
+proxy = ["ballyregan; python_version>=\"3.9\""]
+llm = [
+    "fastapi",
+    "pydantic",
+    "nltk", 
+    "daphne",
+    "openai",
+    "Twisted[tls,http2]",
+    "tiktoken"
+]
+tests = ["tox"]
+
+[project.scripts]
+poe = "poe_api_wrapper.cli:main"
+
+[tool.setuptools]
+packages = ["poe_api_wrapper"]
+package-data = {"poe_api_wrapper" = ["*.json"]}
+
+[tool.ruff]
+line-length = 120
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+addopts = "--tb=short"
+

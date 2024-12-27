@@ -1,5 +1,6 @@
 from time import sleep
-from httpx import Client, ReadTimeout, ConnectError
+from httpx import Client, ReadTimeout, ConnectError, HTTPStatusError
+from .rate_limiter import RateLimitHandler
 from requests_toolbelt import MultipartEncoder
 import os, secrets, string, random, websocket, orjson, threading, queue, ssl, hashlib, re
 from loguru import logger
@@ -30,6 +31,7 @@ class PoeApi:
     MAX_CONCURRENT_MESSAGES = 3
 
     def __init__(self, tokens: dict={}, proxy: list=[], auto_proxy: bool=False):
+        self.rate_limiter = RateLimitHandler()
         self.client = None
         if not {'p-b', 'p-lat'}.issubset(tokens):
             raise ValueError("Please provide valid p-b and p-lat cookies")
@@ -112,9 +114,11 @@ class PoeApi:
                 sleep(1)
     
     def send_request(self, path: str, query_name: str="", variables: dict={}, file_form: list=[], knowledge: bool=False, ratelimit: int = 0):
-        if ratelimit > 0:
-            logger.warning(f"Waiting queue {ratelimit}/2 to avoid rate limit")
-            sleep(random.randint(2, 3))
+        endpoint = f"{path}:{query_name}"
+
+        # Check if we need to wait for rate limit window
+        if wait_time := self.rate_limiter.get_window_remaining(endpoint):
+            sleep(wait_time)
         status_code = 0
         
         try:
@@ -157,6 +161,11 @@ class PoeApi:
                     raise Exception(response.text)
                 
             if status_code == 200:
+                # Reset rate limit attempts on success
+                endpoint = f"{path}:{query_name}"
+                self.rate_limiter.reset_attempts(endpoint)
+                self.rate_limiter.update_window(endpoint)
+                
                 for file in file_form:
                     try:
                         if hasattr(file[1], 'closed') and not file[1].closed:
@@ -173,6 +182,18 @@ class PoeApi:
                 else:
                     logger.error(f"Automatic retrying request {query_name} due to ReadTimeout")
                     return self.send_request(path, query_name, variables, file_form)
+
+            if status_code == 429 or (isinstance(e, HTTPStatusError) and e.response.status_code == 429):
+                endpoint = f"{path}:{query_name}"
+                if self.rate_limiter.should_retry(endpoint):
+                    self.rate_limiter.record_attempt(endpoint)
+                    wait_time = self.rate_limiter.get_retry_after(endpoint)
+                    logger.warning(f"Rate limited. Retrying after {wait_time:.2f} seconds...")
+                    sleep(wait_time)
+                    return self.send_request(path, query_name, variables, file_form)
+                else:
+                    self.rate_limiter.reset_attempts(endpoint)
+                    raise RuntimeError("Max rate limit retries exceeded")
 
             if (
                 isinstance(e, ConnectError) or 500 <= status_code < 600
